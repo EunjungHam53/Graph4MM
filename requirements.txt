@@ -1,0 +1,16 @@
+accelerate
+datasets
+dill
+evaluate
+nltk
+numpy
+pandas
+peft
+pillow
+pyarrow
+requests
+tensorflow
+tqdm
+transformers
+wandb
+warmup_scheduler
