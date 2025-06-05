@@ -5,7 +5,7 @@ export PYTHONPATH=.
 
 MODEL_NAME='facebook/opt-125m'
 CONTEXT='all'
-DESCRIPTION=${MODEL_NAME}-${TASK}-${CONTEXT}
+DESCRIPTION=${MODEL_NAME}-${CONTEXT}
 
 CUDA_VISIBLE_DEVICES=6,1 python language_modelling/run_generation.py \
     --dataset wikiweb2m \
@@ -26,5 +26,4 @@ CUDA_VISIBLE_DEVICES=6,1 python language_modelling/run_generation.py \
     --grad_accumulation_steps 16 \
     --fp16 \
     --wandb_project Graph4MM \
-    --seed 2 \
     --wandb_run ${DESCRIPTION}

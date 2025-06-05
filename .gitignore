@@ -3,3 +3,4 @@ wikiweb2m/raw
 *.log
 wandb
 log
+*/__pycache__/
