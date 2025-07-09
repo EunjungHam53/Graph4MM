@@ -7,7 +7,6 @@ This is the official implementation of our paper:
 > ICML 2025  
 > [Paper Link](https://openreview.net/pdf?id=FB2e8PV6qg)
 
----
 
 ## 🧠 Motivation and Method
 
@@ -24,8 +23,6 @@ To address these, we propose **Graph4MM**, a graph-based multimodal learning fra
 - **MM-QFormer**: A multi-mapping querying transformer that performs flexible and structure-conditioned cross-modal fusion.
 
 Our theoretical and empirical results show that incorporating graph structure improves multimodal understanding and generalization—especially in generative tasks—beyond treating the graph as an isolated modality.
-
----
 
 ## ⚙️ Environment Setup
 
@@ -48,8 +45,6 @@ Make sure to install a version of `torch` compatible with your CUDA version, for
 # Example for CUDA 11.7
 pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 -f https://download.pytorch.org/whl/torch_stable.html
 ```
-
----
 
 ## 📦 Data Preparation: WikiWeb2M
 
@@ -78,7 +73,6 @@ sh process_data.sh
 
 This script will download, extract, and preprocess the dataset into usable `.pt` files for training.
 
----
 
 ## 🚀 Run Graph4MM
 
@@ -90,11 +84,9 @@ sh script/train_generation.sh
 
 Make sure your data and pretrained checkpoints are correctly set up in the script configuration.
 
----
 
 We will continue to update this repository with LLaMA backbone, discriminative dataset, and further extensions. Stay tuned!
 
----
 
 ## Cite
 
