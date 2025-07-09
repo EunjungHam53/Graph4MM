@@ -5,7 +5,6 @@ This is the official implementation of our paper:
 > **Graph4MM: Weaving Multimodal Learning with Structural Information**  
 > Xuying Ning\*, Dongqi Fu\*, Tianxin Wei, Wujiang Xu, Jingrui He  
 > ICML 2025  
-> \* Equal contribution  
 > [Paper Link](https://openreview.net/pdf?id=FB2e8PV6qg)
 
 ---
