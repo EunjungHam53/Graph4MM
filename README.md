@@ -93,3 +93,16 @@ Make sure your data and pretrained checkpoints are correctly set up in the scrip
 ---
 
 We will continue to update this repository with LLaMA backbone, discriminative dataset, and further extensions. Stay tuned!
+
+---
+
+## Cite
+
+If you find this repository, please cite our paper.
+```bash
+@inproceedings{ninggraph4mm,
+  title={Graph4MM: Weaving Multimodal Learning with Structural Information},
+  author={Ning, Xuying and Fu, Dongqi and Wei, Tianxin and Xu, Wujiang and He, Jingrui},
+  booktitle={Forty-second International Conference on Machine Learning}
+}
+```
