@@ -86,7 +86,7 @@ class DataParser():
         headers = {"User-Agent": "research (https://www.cs.cmu.edu/; minjiy@cs.cmu.edu)"}
         
         # Tạo thư mục theo batch
-        image_dir = f'../images/batch_{self.batch_start}_{self.batch_end}'
+        image_dir = f'./images/batch_{self.batch_start}_{self.batch_end}'
         os.makedirs(image_dir, exist_ok=True)
         
         total_size = 0  # Track total downloaded size
@@ -125,57 +125,72 @@ class DataParser():
                     # Skip if already exists
                     if os.path.exists(file_name):
                         total_size += os.path.getsize(file_name)
-                        continue
+                        downloaded_count += 1
+                        break  # Break like original code
 
+                    another_image = False
                     try:
                         response = requests.get(image_url, headers=headers, timeout=10)
                         response.raise_for_status()
-                        
-                        # Write and optimize image
-                        with open(file_name, 'wb') as file:
-                            for chunk in response.iter_content(8192):
-                                file.write(chunk)
-                        
-                        # Optimize image to reduce size
-                        try:
-                            img = Image.open(file_name)
-                            # Resize if too large
-                            if img.size[0] > 1024 or img.size[1] > 1024:
-                                img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
-                            
-                            # Save with compression
-                            if file_format.lower() in ['jpg', 'jpeg']:
-                                img.save(file_name, 'JPEG', quality=85, optimize=True)
-                            elif file_format.lower() == 'png':
-                                img.save(file_name, 'PNG', optimize=True)
-                            else:
-                                img.save(file_name, format=img.format, optimize=True)
-                                
-                        except Exception as img_error:
-                            print(f"Image processing error {file_name}: {img_error}")
-                            if os.path.exists(file_name):
-                                os.remove(file_name)
+                    except requests.exceptions.HTTPError as e:
+                        if "404 Client Error: Not Found for url" in str(e):
+                            another_image = True
                             continue
-                            
-                        # Update size tracking
-                        file_size = os.path.getsize(file_name)
-                        total_size += file_size
-                        downloaded_count += 1
-                        
-                        # Check size after each download
-                        if total_size > max_size_mb * 1024 * 1024:
-                            print(f"Size limit reached during download")
-                            return
-                            
-                    except requests.exceptions.RequestException as e:
-                        print(f"Download failed for {image_url}: {e}")
-                        continue
+                        else:
+                            time.sleep(1)
+                            try:
+                                response = requests.get(image_url, headers=headers)
+                            except:
+                                another_image = True
+                                continue
                     except Exception as e:
-                        print(f"Unexpected error: {e}")
+                        print(f"Download failed for {image_url}: {e}")
+                        another_image = True
                         continue
+
+                    # Write file
+                    with open(file_name, 'wb') as file:
+                        for chunk in response.iter_content(8192):
+                            file.write(chunk)
+
+                    # Validate image
+                    try:
+                        img = Image.open(file_name)
+                        # Optimize image to reduce size
+                        if img.size[0] > 1024 or img.size[1] > 1024:
+                            img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
                         
-                    # Small delay to avoid overwhelming servers
-                    time.sleep(0.1)
+                        # Save with compression  
+                        if file_format.lower() in ['jpg', 'jpeg']:
+                            img.save(file_name, 'JPEG', quality=85, optimize=True)
+                        elif file_format.lower() == 'png':
+                            img.save(file_name, 'PNG', optimize=True)
+                        else:
+                            img.save(file_name, optimize=True)
+                            
+                    except Exception as img_error:
+                        if os.path.exists(file_name):
+                            os.remove(file_name)
+                        another_image = True
+                        continue
+
+                    # Update tracking
+                    file_size = os.path.getsize(file_name)
+                    total_size += file_size
+                    downloaded_count += 1
+                    
+                    # Check size limit
+                    if total_size > max_size_mb * 1024 * 1024:
+                        print(f"Size limit reached during download")
+                        return
+
+                    # CRITICAL: Break after successful download (like original code)
+                    if another_image == False:
+                        break
+                        
+                # Break out of image_id loop if we got an image
+                if another_image == False:
+                    break
         
         print(f"Batch {self.batch_start}-{self.batch_end} completed:")
         print(f"Downloaded: {downloaded_count} images")
