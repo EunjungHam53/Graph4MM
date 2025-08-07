@@ -15,18 +15,36 @@ from collections import defaultdict
 
 import requests
 
+def convert_tf_to_scipy(tf_sparse_tensor):
+    array = tf.sparse.to_dense(tf_sparse_tensor).numpy()
+    if len(array.shape) == 2:
+        array = array.reshape(-1)
+    return array.tolist()
+
+def convert_to_scipy(page_id, d):
+    page_url = d[0]['page_url'].numpy()
+    page_title = d[0]['page_title'].numpy()
+    page_description = d[0]['clean_page_description'].numpy()
+    section_title = convert_tf_to_scipy(d[1]['section_title'])
+    section_depth = convert_tf_to_scipy(d[1]['section_depth'])
+    section_heading = convert_tf_to_scipy(d[1]['section_heading_level'])
+    section_parent_index = convert_tf_to_scipy(d[1]['section_parent_index'])
+    section_summary = convert_tf_to_scipy(d[1]['section_clean_1st_sentence'])
+    section_rest_sentence = convert_tf_to_scipy(d[1]['section_rest_sentence'])
+    image_url =  convert_tf_to_scipy(d[1]['section_image_url'])
+    image_caption = convert_tf_to_scipy(d[1]['section_image_captions'])
+
+    return [page_id, page_url, page_title, page_description, section_title, section_depth, section_heading, \
+                section_parent_index, section_summary, section_rest_sentence, image_url, image_caption]
+
 class DataParser():
-    def __init__(self, batch_start=None, batch_size=4000):
+    def __init__(self, start_page=50000, end_page=100000):
         self.path = './wikiweb2m/raw/'
         self.filepath = 'wikiweb2m-*'
         self.suffix = '.tfrecord*'
-        
-        # Config cho batch processing
-        self.batch_start = batch_start or 50000
-        self.batch_size = batch_size
-        self.batch_end = self.batch_start + batch_size
-        
-        print(f"Processing batch: {self.batch_start} -> {self.batch_end}")
+        self.start_page = start_page
+        self.end_page = end_page
+        print(f"Processing pages: {start_page} -> {end_page}")
         self.parse_data()
 
     def parse_data(self):
@@ -78,55 +96,35 @@ class DataParser():
         raw_dataset = tf.data.TFRecordDataset(data_path, compression_type='GZIP')
         self.dataset = raw_dataset.map(_parse_function)
 
-    def download_images_batch(self, max_size_mb=15*1024):  # 15GB limit
-        """
-        Download images with size monitoring
-        max_size_mb: Maximum total size in MB before stopping
-        """
+    def download_images(self):
         headers = {"User-Agent": "research (https://www.cs.cmu.edu/; minjiy@cs.cmu.edu)"}
-        
-        # Tạo thư mục theo batch
-        image_dir = f'./images/batch_{self.batch_start}_{self.batch_end}'
+
+        image_dir = './images'
         os.makedirs(image_dir, exist_ok=True)
-        
-        total_size = 0  # Track total downloaded size
-        downloaded_count = 0
-        
+
+        image_count = 0  # Đếm số image đã tải
+
         for page_id, d in enumerate(self.dataset):
-            # Skip pages outside batch range
-            if page_id < self.batch_start:
+            if page_id < self.start_page:
                 continue
-            if page_id >= self.batch_end:
+            if page_id == self.end_page:
                 break
-                
-            if page_id % 500 == 0:
-                print(f"Page {page_id}, Downloaded: {downloaded_count} images, Size: {total_size/1024:.1f}MB")
-                
-            # Check size limit
-            if total_size > max_size_mb * 1024 * 1024:
-                print(f"Reached size limit {max_size_mb}MB at page {page_id}")
-                break
+            if page_id % 1000 == 0:
+                print(f'{page_id} pages processed, {image_count} images downloaded...')
                 
             image_urls = tf.sparse.to_dense(d[1]['section_image_url']).numpy()
-            
             for section_id in range(image_urls.shape[0]):
                 for image_id in range(image_urls[section_id].shape[0]):
                     image_url = image_urls[section_id][image_id]
                     if image_url == b'':
                         continue
-                        
                     image_url = image_url.decode()
                     file_format = os.path.splitext(image_url)[1][1:]
-                    if not file_format:
-                        file_format = 'jpg'
-                        
                     file_name = f'{image_dir}/{page_id}_{section_id}_{image_id}.{file_format}'
                     
-                    # Skip if already exists
                     if os.path.exists(file_name):
-                        total_size += os.path.getsize(file_name)
-                        downloaded_count += 1
-                        break  # Break like original code
+                        image_count += 1  # Đếm file đã tồn tại
+                        break
 
                     another_image = False
                     try:
@@ -138,72 +136,32 @@ class DataParser():
                             continue
                         else:
                             time.sleep(1)
-                            try:
-                                response = requests.get(image_url, headers=headers)
-                            except:
-                                another_image = True
-                                continue
-                    except Exception as e:
-                        print(f"Download failed for {image_url}: {e}")
-                        another_image = True
-                        continue
+                            response = requests.get(image_url)
 
-                    # Write file
                     with open(file_name, 'wb') as file:
                         for chunk in response.iter_content(8192):
                             file.write(chunk)
 
-                    # Validate image
                     try:
                         img = Image.open(file_name)
-                        # Optimize image to reduce size
-                        if img.size[0] > 1024 or img.size[1] > 1024:
-                            img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
-                        
-                        # Save with compression  
-                        if file_format.lower() in ['jpg', 'jpeg']:
-                            img.save(file_name, 'JPEG', quality=85, optimize=True)
-                        elif file_format.lower() == 'png':
-                            img.save(file_name, 'PNG', optimize=True)
-                        else:
-                            img.save(file_name, optimize=True)
-                            
-                    except Exception as img_error:
+                        image_count += 1  # Đếm image tải thành công
+                    except:
                         if os.path.exists(file_name):
                             os.remove(file_name)
                         another_image = True
                         continue
 
-                    # Update tracking
-                    file_size = os.path.getsize(file_name)
-                    total_size += file_size
-                    downloaded_count += 1
-                    
-                    # Check size limit
-                    if total_size > max_size_mb * 1024 * 1024:
-                        print(f"Size limit reached during download")
-                        return
-
-                    # CRITICAL: Break after successful download (like original code)
                     if another_image == False:
                         break
-                        
-                # Break out of image_id loop if we got an image
-                if another_image == False:
-                    break
-        
-        print(f"Batch {self.batch_start}-{self.batch_end} completed:")
-        print(f"Downloaded: {downloaded_count} images")
-        print(f"Total size: {total_size/1024/1024:.1f}MB")
 
-# Usage examples for different batches
+        print(f'Batch {self.start_page}-{self.end_page} completed: {image_count} images downloaded')
+
+
 if __name__ == "__main__":
-    # Batch 1: 50000-54000
-    parser1 = DataParser(batch_start=50000, batch_size=4000)
-    parser1.download_images_batch(max_size_mb=15*1024)  # 15GB limit
+    # Chạy batch cụ thể
+    parser = DataParser(start_page=50000, end_page=54000)
+    parser.download_images()
     
-    # Batch 2: 54000-58000  
-    # parser2 = DataParser(batch_start=54000, batch_size=4000)
-    # parser2.download_images_batch(max_size_mb=15*1024)
-    
-    # Continue with other batches...
+    # Các batch khác:
+    # parser = DataParser(start_page=54000, end_page=58000)
+    # parser = DataParser(start_page=58000, end_page=62000)
