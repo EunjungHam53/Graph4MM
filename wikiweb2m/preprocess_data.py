@@ -86,7 +86,7 @@ class DataParser():
         headers = {"User-Agent": "research (https://www.cs.cmu.edu/; minjiy@cs.cmu.edu)"}
         
         # Tạo thư mục theo batch
-        image_dir = f'./images/batch_{self.batch_start}_{self.batch_end}'
+        image_dir = f'../images/batch_{self.batch_start}_{self.batch_end}'
         os.makedirs(image_dir, exist_ok=True)
         
         total_size = 0  # Track total downloaded size
