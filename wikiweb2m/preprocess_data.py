@@ -311,6 +311,9 @@ class DataParser():
     def download_images(self):
         headers = {"User-Agent": "research (https://www.cs.cmu.edu/; minjiy@cs.cmu.edu)"}
 
+        image_dir = './images'
+        os.makedirs(image_dir, exist_ok=True)
+
         for page_id, d in enumerate(self.dataset):
             if page_id < 50000:
                 continue
@@ -326,7 +329,7 @@ class DataParser():
                         continue
                     image_url = image_url.decode()
                     file_format = os.path.splitext(image_url)[1][1:]
-                    file_name = f'/data/minji/images/{page_id}_{section_id}_{image_id}.{file_format}'
+                    file_name = f'{image_dir}/{page_id}_{section_id}_{image_id}.{file_format}'
                     #file_name = f'/projects/rsalakhugroup/minjiy/images/{page_id}_{section_id}_{image_id}.{file_format}'
                     if os.path.exists(file_name):
                         break
