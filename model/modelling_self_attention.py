@@ -280,6 +280,30 @@ class SelfAttentionModel(nn.Module):
 
 
     def get_visual_embs(self, input_ids, attention_mask, pixel_values, text_hop, img_hop, text_neighbor, neighbor_attention, text_graph, img_graph):
+        # === FIX: Handle section_all mode - early return với chỉ visual processing ===
+        if self.context == "section_all":
+            # Chỉ process visual của section hiện tại, không cần neighbors
+            batch_size, visual_neighbor_num, pixel, width, height = pixel_values.shape
+            pixel_values = pixel_values.reshape(-1, pixel, width, height)
+            visual_outputs = self.visual_model(pixel_values)
+            visual_encoder_outputs = visual_outputs.pooler_output
+            visual_embs = visual_encoder_outputs.reshape(batch_size, visual_neighbor_num, -1)
+            
+            batch_size, seq_len = input_ids.shape  
+            text_outputs = self.text_model(input_ids=input_ids, attention_mask=attention_mask, 
+                                        output_hidden_states=True).hidden_states[-1]
+            text_outputs = text_outputs.mean(dim=1)  # Pool to get section representation
+            text_outputs = text_outputs.unsqueeze(1).expand(-1, visual_neighbor_num, -1)  # Match visual dims
+            
+            # Process qua qformer với empty graphs
+            empty_img_graph = None
+            empty_text_graph = None
+            Q_tokens, _ = self.visual_qformer(visual_embs, text_outputs, empty_img_graph, empty_text_graph)
+            visual_embs = self.visual_embeddings(Q_tokens)
+            
+            return visual_embs.reshape(batch_size, visual_neighbor_num, self.n_visual_tokens, -1)
+        
+        # === ORIGINAL CODE cho "all" mode ===
         # Self Attention on input_ids
         batch_size, num_neighbors, seq_len = text_neighbor.shape
         text_neighbor = text_neighbor.view(batch_size * num_neighbors, seq_len)

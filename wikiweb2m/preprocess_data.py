@@ -368,4 +368,4 @@ if __name__ == "__main__":
     parser.split_preprocess()
     parser.split_ids('section')
     parser.save_df_torch()
-    # parser.download_images()
+    parser.download_images()
